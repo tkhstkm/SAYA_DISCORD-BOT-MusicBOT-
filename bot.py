@@ -4,7 +4,7 @@ import yt_dlp
 import asyncio
 from discord.ext import commands
 
-TOKEN = 'your_token_here'
+TOKEN = ''
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -25,11 +25,11 @@ async def leave(ctx):
 
 @bot.command()
 async def play(ctx, url):
-    filepath = "/home/ubuntu/temp.mp3"
+    filepath_without_extension = "/home/ubuntu/temp"
 
     ydl_opts = {
         'format': 'bestaudio/best',
-        'outtmpl': filepath,
+        'outtmpl': filepath_without_extension,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -37,20 +37,31 @@ async def play(ctx, url):
         }],
     }
 
+    # 既存のファイルがあれば削除
+    if os.path.exists(filepath_without_extension + ".mp3"):
+        os.remove(filepath_without_extension + ".mp3")
+
+    # ダウンロード
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
+    # 再生の準備
     vc = ctx.voice_client
     if vc is None:
         channel = ctx.message.author.voice.channel
         vc = await channel.connect()
 
-    vc.play(discord.FFmpegPCMAudio(filepath), after=lambda e: print('done', e))
+    # 再生
+    vc.play(discord.FFmpegPCMAudio(filepath_without_extension + ".mp3"), after=lambda e: print('done', e))
     while vc.is_playing():
         await asyncio.sleep(1)
 
+    # 停止
     vc.stop()
-    if os.path.exists(filepath):
-        os.remove(filepath)
+
+    # ファイル削除
+    if os.path.exists(filepath_without_extension + ".mp3"):
+        os.remove(filepath_without_extension + ".mp3")
+
 
 bot.run(TOKEN)
